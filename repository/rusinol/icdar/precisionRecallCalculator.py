@@ -95,12 +95,6 @@ else:
                 # load the response
                 predictFilePath = os.path.join(predictFolder, npyFile)
                 maxPredict = np.load(predictFilePath)
-                #orgImageArray = np.round(imread(picFileFullpath, flatten=True)).astype(np.uint8)
-                #showMaxPredict = maxPredict.copy()
-                #showMaxPredict[showMaxPredict < 0 ] = 0
-                #plt.imshow(orgImageArray)
-                #plt.imshow(showMaxPredict, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-                #plt.show()
                 gTruthFlat = gTruthArray.ravel() 
                 predictFlat = maxPredict.ravel()
                 # increased value order

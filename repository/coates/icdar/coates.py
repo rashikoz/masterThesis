@@ -2,15 +2,10 @@ import numpy as np
 import os
 import sys
 import time
-import gzip
 from numpy.lib.stride_tricks import as_strided
 from scipy.signal import fftconvolve
 from scipy.sparse import coo_matrix
-import cPickle as pickle
 from scipy.misc import imresize, imread
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import cv2 as cv
 import mserHelper
 
 # config parameters
@@ -103,61 +98,10 @@ def updateTextPresence(charInfos, imageSize, cellSizeTP, stepSizeTP):
     numTextPatches = len(np.where(resultArray == 1)[0])
     numNonTextPatches = len(np.where(resultArray == 0)[0])
     end = time.time()
-#     imageOrg = cv.imread(imgPath)
-#     for eachCharRun in xrange(validCharBoxes.shape[0]):
-#         #[rowCharTag, colCharTag, heightCharTag, widthCharTag]
-#         curCharTag =  validCharBoxes[eachCharRun,:]
-#         heightValues  = curCharTag[3] - curCharTag[1]
-#         widthValues  = curCharTag[2] - curCharTag[0]
-#         leftTopCorner = (curCharTag[0], curCharTag[1])
-#         rightBottomCorner = (curCharTag[0]+widthValues, curCharTag[1]+heightValues)
-#         cv.rectangle(imageOrg, leftTopCorner, rightBottomCorner, (0, 0, 0), 2)
-#     plt.imshow(imageOrg)
-#     plt.show()
-#             resultArray[indexRun] = textPresenceCheckerCharBoxes(taggedRectangles, \
-#                                                         stepSizeTP[0]*indexRun[0], \
-#                                                         stepSizeTP[1]*indexRun[1], \
-#                                                         cellSizeTP)
-
     print 'updateTextPresence - Elapsed Time - ', end-start
     print 'updateTextPresence - Number of Text Patches - ', numTextPatches   
     print 'updateTextPresence - Number of Non Text Patches - ', numNonTextPatches 
     return(resultArray)
-
-# text presence alogorithm word level bboxes ...old implementation
-def textPresenceCheckerWordBoxes(taggedRectangles, eachRowCord, eachColCord, cellSizeTC):
-    # convert to sets for intesection operation
-    retVal = 0
-    rowSetPatch = set(xrange(eachRowCord, eachRowCord+cellSizeTC[0])) 
-    colSetPatch = set(xrange(eachColCord, eachColCord+cellSizeTC[1]))
-    patchArea = cellSizeTC[0]*cellSizeTC[1] 
-    # running through the all tagged words
-    for eachTagRect in taggedRectangles.getchildren():
-        eachTagDict = eachTagRect.attrib
-        # get the tag informations
-        coltag = int(float(eachTagDict['x']))
-        rowTag = int(float(eachTagDict['y']))
-        widthTag = int(float(eachTagDict['width']))
-        colTagEnd = coltag + widthTag
-        heightTag = int(float(eachTagDict['height']))
-        rowTagEnd = rowTag + heightTag
-        # convert to set for intersection operation   
-        rowSetTag = set(xrange(rowTag, rowTagEnd)) 
-        colSettag = set(xrange(coltag, colTagEnd)) 
-        overlapRows = len(rowSetPatch.intersection(rowSetTag))
-        overlapCols = len(colSetPatch.intersection(colSettag))
-        overlapArea = overlapRows*overlapCols
-        overLapRatio = overlapArea/float(patchArea)
-        if(overLapRatio > 0.8):
-            if((heightTag < 1.3*cellSizeTC[0]) and (heightTag > 0.7*cellSizeTC[0])):
-                # update the presence of text
-                retVal = 1
-                return(retVal)
-            elif((widthTag < 1.3*cellSizeTC[1]) and (widthTag > 0.7*cellSizeTC[1])):
-                # update the presence of text
-                retVal = 1
-                return(retVal) 
-    return(retVal)
 
 # text presence alogorithm
 def getAllCharBoxesImage(taggedRectangles):
@@ -243,69 +187,6 @@ def testTextPresenceOpti(bboxArray, eachRowCord, eachColCord, cellSizeTC):
         if(overLapPatchRatio >= 0.8):
             # update the presence of text
             retVal = 1
-    return(retVal)
-
-def textPresenceCheckerCharBoxes(taggedRectangles, eachRowCord, eachColCord, cellSizeTC):
-    # convert to sets for intesection operation
-    retVal = 0
-    rowSetPatch = set(xrange(eachRowCord, eachRowCord+cellSizeTC[0])) 
-    colSetPatch = set(xrange(eachColCord, eachColCord+cellSizeTC[1])) 
-    patchArea = cellSizeTC[0]*cellSizeTC[1]
-    # running through the all tagged words
-    for eachTagRect in taggedRectangles.getchildren(): 
-        word = eachTagRect.getchildren()[0].text
-        segDetails = eachTagRect.getchildren()[1].getchildren()
-        eachTagRectDetails = eachTagRect.attrib
-        coltag = int(float(eachTagRectDetails['x']))
-        rowTag = int(float(eachTagRectDetails['y']))
-        widthTag = int(float(eachTagRectDetails['width']))
-        heightTag = int(float(eachTagRectDetails['height']))
-        rowSetWordTag = set(xrange(rowTag, rowTag+heightTag)) 
-        colSetWordTag = set(xrange(coltag, coltag+widthTag)) 
-        overlapRowsWord = len(rowSetPatch.intersection(rowSetWordTag))
-        overlapColsWord = len(colSetPatch.intersection(colSetWordTag))
-        overlapAreaWord = overlapRowsWord*overlapColsWord
-        # wordArea = heightTag*widthTag
-        # overLapRatioWord = overlapAreaWord/float(wordArea)
-        if (overlapAreaWord == 0):
-            break
-        # calculate the char width
-        charWidthArray = np.array([0])
-        for tempRun in np.arange(len(segDetails)):
-            charWidthArray = np.append(charWidthArray, int(float(segDetails[tempRun].text)))
-        charWidthArray = np.append(charWidthArray, widthTag)
-        charWidthArray = np.diff(charWidthArray)
-        # run through the all the patches
-        for eachCharRun in np.arange(len(word)):
-            curChar = word[eachCharRun]
-            rowCharTag = rowTag
-            heightCharTag = heightTag
-            widthCharTag = charWidthArray[eachCharRun]
-            if eachCharRun == 0:
-                colCharTag = coltag
-            else:
-                colCharTag += charWidthArray[eachCharRun-1]
-            # ensures that the ground truth window is similar to the size of the patch size considered
-            # convert to set for intersection operation
-            # range of character sizes 0.7*32 - 1.3*32  
-            maxCharBoxSizeHeight = np.ceil(1.3*cellSizeTC[0])
-            minCharBoxSizeHeight = np.floor(0.7*cellSizeTC[0])
-            maxCharBoxSizeWidth = np.ceil(1.3*cellSizeTC[1])
-            minCharBoxSizeWidth = np.floor(0.7*cellSizeTC[1])
-            if (((heightCharTag <= maxCharBoxSizeHeight) and (heightCharTag >= minCharBoxSizeHeight)) or \
-               ((widthCharTag <= maxCharBoxSizeWidth) and (widthCharTag >= minCharBoxSizeWidth))):
-                rowSetCharTag = set(xrange(rowCharTag, rowCharTag+heightCharTag)) 
-                colSetCharTag = set(xrange(colCharTag, colCharTag+widthCharTag)) 
-                charArea = widthCharTag*heightCharTag
-                overlapRows = len(rowSetPatch.intersection(rowSetCharTag))
-                overlapCols = len(colSetPatch.intersection(colSetCharTag))
-                overlapArea = overlapRows*overlapCols
-                overLapCharRatio = overlapArea/float(charArea)
-                overLapPatchRatio = overlapArea/float(patchArea)
-                if(overLapPatchRatio >= 0.8):
-                    # update the presence of text
-                    retVal = 1
-                    return(retVal)
     return(retVal)
 ####################################################################################################
 # Normalization procedure
@@ -521,26 +402,6 @@ def standardizeFeatures(inputArray, feStdParams=0, verbose = 0):
         print 'standardizeFeatures - Argument Array Shape - ', inputArray.shape  
         print 'standardizeFeatures - Return Array Shape - ', inputArray.shape
     return([inputArray, featureParams])
-
-def featureMapFunction(inputArray, alpha=0.5, flatGrad = 0.0001, verbose = 0):
-    #output = zeros(size(x,1),size(x,2))
-    output = np.zeros_like(inputArray)
-    # x<-alpha
-    idx = inputArray < -alpha;
-    # output(idx) = x(idx) + (1-flat_grad) * alpha;
-    output = np.abs(np.multiply(inputArray,idx) + idx*(1-flatGrad)*alpha)
-    # -alpha <= x <=alpha
-    idx = np.multiply((inputArray <= alpha),(inputArray >= -alpha)) > 0
-    # output(idx) = x(idx) * flat_grad;
-    output = abs(output + np.multiply(inputArray, idx)*flatGrad)
-    #% x>-alpha
-    idx = inputArray>alpha
-    # output(idx) = x(idx) - (1-flat_grad) * alpha;
-    output = output + np.multiply(inputArray, idx) - idx*(1-flatGrad)*alpha;
-    if verbose:
-        print 'featureMapFunction - Argument Array Shape - ', inputArray.shape
-        print 'featureMapFunction - Return Array Shape - ', output.shape
-    return(output) 
 ###################################################################################################
 def getQuadIndices(numSubRow, numSubCol, poolShape):
     #numPools = poolShape[0]*poolShape[1]
@@ -896,132 +757,6 @@ def computeResponsePatchesConvolution(patchArray, dictionary, patchSizeTraining,
         print 'computeResponsePatchesConvolution - Return Array Shape - ', featureComplete.shape
     return featureComplete
 ###################################################################################################       
-# def padImage(reScaledImg, patcSizetraining):
-#     newImg = np.zeros((reScaledImg.shape[0] + patcSizetraining[0] - 1, \
-#                        reScaledImg.shape[1] + patcSizetraining[1] - 1)).astype(reScaledImg.dtype)
-#     newImg[0:reScaledImg.shape[0], 0:reScaledImg.shape[1]] = reScaledImg
-#     return newImg
-#  
-def getPredictionsForImage(predictFilePath, scaleList, orgImageSize , patchStepTraining, patchSizeTraining):
-    # thresholded predictions
-    start = time.time()
-    gzipFile = gzip.open(predictFilePath,'rb')
-    predictAcrossScales = pickle.load(gzipFile)
-    gzipFile.close()
-    predictImageAllScales = np.zeros((orgImageSize[0], orgImageSize[1], len(scaleList)))
-    for scaleRun in xrange(len(scaleList)):
-        truePredict = True
-        curScale = scaleList[scaleRun]
-        predictImage = np.ones(orgImageSize)*(-np.Inf)
-        txtPredictions = predictAcrossScales[scaleRun]
-        if(txtPredictions.shape == (1,)):
-            preVal = txtPredictions[0]
-            if preVal == -100:
-                truePredict = False
-        if(truePredict == True):
-            arrIndex = np.ndindex(txtPredictions.shape[0], txtPredictions.shape[1])
-            for predictRun in arrIndex:
-                eachPredict = txtPredictions[predictRun[0], predictRun[1]]
-                eachRowCord = np.floor((predictRun[0]*patchStepTraining[0])/curScale)
-                eachColCord = np.floor((predictRun[1]*patchStepTraining[1])/curScale)
-                eachRowCordEnd = eachRowCord + np.floor(patchSizeTraining[0]/curScale)
-                eachColCordEnd = eachColCord + np.floor(patchSizeTraining[1]/curScale)
-                predPart = predictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd]
-                predictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd] = np.maximum(predPart, eachPredict)
-            predictImage[predictImage==-np.Inf] = np.min(txtPredictions)
-        predictImageAllScales[:,:,scaleRun] = predictImage
-#         showMaxPredict = predictImage.copy()
-#         showMaxPredict[showMaxPredict < 0 ] = 0
-#         plt.imshow(showMaxPredict)
-#         plt.show()
-    finalPredict = np.max(predictImageAllScales, 2)
-    end = time.time()
-    print 'getPredictionsForImage - Elapsed Time in seconds - ', end-start
-    return finalPredict
-
-def parallelImageProcessing(dictionary, patchSizeTraining, patchStepTraining, \
-                                   patchSizeDictionary, patchStepDictionary, \
-                                   zcaParams , scaleList, testPredictFolder,\
-                                   svmWeights, imgPathList): 
-    imgRun = 0
-    for imgPath in imgPathList:
-        start = time.time()
-        imgRun += 1 
-        dirName, fName = os.path.split(imgPath)
-        fName = fName.split('.')[0]
-        dirName = dirName.split('/')[-1]
-        print 'Starting processing Image - ', imgPath, ' - ', imgRun , '/', len(imgPathList)
-        # save file names
-        predictFileName = os.path.join(testPredictFolder, 'Predict_' + dirName + '_' + fName + '.gz')
-        if(os.path.isfile(predictFileName)):
-            print 'Data already present'
-        else:
-            # open the image and load the image as array
-            imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)
-            responseList = []
-            for scaleRun in xrange(len(scaleList)):
-                curScale = scaleList[scaleRun]
-                print 'Computing the response for image ', fName, ' at scale ', curScale
-                # rescale the image based on ratio given
-                rescaledImage = imresize(imageArray, curScale, interp = 'bicubic')
-                # zero padding
-                # rescaledImage = padImage(rescaledImage, patchSizeTraining)
-                # features
-                if((rescaledImage.shape[0] >= 32) and (rescaledImage.shape[1] >=32)):
-                    if (patchStepTraining == (1,1)):
-                        # feature convolution extraction
-                        # txtPredictions = coates.computeResponseImageConvolution(rescaledImage, dictionary, \
-                        #                patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
-                        txtPredictions = computeResponseImageConvolutionBatch(rescaledImage, dictionary, \
-                                        patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
-                        #print np.allclose(txtPredictions, txtPredictionsbatch)
-                    else:
-                        # feature extraction patch extraction           
-                        txtPredictions = computeResponseImage(rescaledImage, dictionary, patchSizeTraining, \
-                                        patchStepTraining, patchSizeDictionary, patchStepDictionary, \
-                                        zcaParams, svmWeights)
-                        #print np.allclose(txtPredictionst, txtPredictions)
-                else:
-                    txtPredictions = np.array([-100])
-                responseList.append(txtPredictions)
-            # save the response
-            gZipfile = gzip.GzipFile(predictFileName, 'wb')
-            gZipfile.write(pickle.dumps(responseList, 1))
-            gZipfile.close()
-            del responseList
-        end = time.time()
-        print  'Finished processing  - ', imgPath, ' seconds - ', end-start
-        print '############################################################################################'
-
-def findMaxImage(gTruthFolder, inputFolder, outputFolder, scaleList, patchStepTraining, patchSizeTraining, predictFilePathList):
-    imgRun = 0
-    for eachPredictFile in predictFilePathList:
-        # split the path
-        start = time.time()
-        imgRun += 1 
-        dirName, fName = os.path.split(eachPredictFile)
-        fName = fName.split('.')[0]
-        dirName = dirName.split('/')[-1]
-        predictFilePath = os.path.join(inputFolder, 'Predict_' + dirName + '_' + fName + '.gz')
-        print 'Starting processing Image - ', predictFilePath, ' - ', imgRun , '/', len(predictFilePathList)
-        curFileName = os.path.split(predictFilePath)[1]
-        # check if output is already created
-        maxPredictFileName = os.path.join(outputFolder, curFileName.replace('Predict_', 'MaxPredict_'))
-        maxPredictFileName = maxPredictFileName.replace('.gz', '.npy')
-        if(os.path.isfile(maxPredictFileName)):
-            print 'Data already present'  
-        else:
-            fName = curFileName.partition('Predict_')[2]
-            gTruthFilename = 'GTruth_' + fName
-            gTruthFilename = gTruthFilename.replace('.gz', '.npy')
-            gTruthArray = np.load(os.path.join(gTruthFolder, gTruthFilename))
-            orgImageSize = gTruthArray.shape
-            maxPredict = getPredictionsForImage(predictFilePath, scaleList, \
-                                           orgImageSize, patchStepTraining, patchSizeTraining)
-            np.save(maxPredictFileName, maxPredict)
-        end = time.time()
-        print  'Finished processing  - ', predictFilePath, ' seconds - ', end-start
-
 # final max prediction in one function
 def getFinalPrediction(dictionary, patchSizeTraining, patchStepTraining, \
                                    patchSizeDictionary, patchStepDictionary, \
@@ -1040,14 +775,7 @@ def getFinalPrediction(dictionary, patchSizeTraining, patchStepTraining, \
         minT  = 0
         if(os.path.isfile(predictFileName)):
             print 'getFinalPrediction - Data already present'
-            imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)
-            maxPredictImage = np.load(predictFileName)            
-            maxPredictImage[maxPredictImage < 1.5] = 0
-            plt.imshow(imageArray)
-            plt.imshow(maxPredictImage, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-            plt.gca().xaxis.set_major_locator(plt.NullLocator())
-            plt.gca().yaxis.set_major_locator(plt.NullLocator())
-            plt.show()
+            imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)            
         else:
             # open the image and load the image as array
             imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)
@@ -1062,8 +790,6 @@ def getFinalPrediction(dictionary, patchSizeTraining, patchStepTraining, \
                 if((rescaledImage.shape[0] >= 32) and (rescaledImage.shape[1] >=32)):
                     if (patchStepTraining == (1,1)):
                         # feature convolution extraction
-                        # txtPredictions = coates.computeResponseImageConvolution(rescaledImage, dictionary, \
-                        #                patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
                         txtPredictions = computeResponseImageConvolutionBatch(rescaledImage, dictionary, \
                                         patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
                         #print np.allclose(txtPredictions, txtPredictionsbatch)
@@ -1072,13 +798,6 @@ def getFinalPrediction(dictionary, patchSizeTraining, patchStepTraining, \
                         txtPredictions = computeResponseImage(rescaledImage, dictionary, patchSizeTraining, \
                                         patchStepTraining, patchSizeDictionary, patchStepDictionary, \
                                         zcaParams, svmWeights)
-                        #print np.allclose(txtPredictionsP, txtPredictions)
-                    tempCopy = txtPredictions.copy()
-                    tempCopy[tempCopy < 0 ] = 0
-                    plt.imshow(tempCopy, cmap = cm.get_cmap('Greys_r'))
-                    plt.show()
-                    eachCountNum = 0
-                    fileRun = 0 
                     arrIndex = np.ndindex(txtPredictions.shape[0], txtPredictions.shape[1])
                     for predictRun in arrIndex:
                         eachPredict = txtPredictions[predictRun[0], predictRun[1]]
@@ -1089,45 +808,13 @@ def getFinalPrediction(dictionary, patchSizeTraining, patchStepTraining, \
                         eachColCordEnd = int(eachColCord + np.floor(patchSizeTraining[1]/curScale))
                         predPart = maxPredictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd]
                         maxPredictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd] = np.maximum(predPart, eachPredict)
-                        # for video creation
-                        if(eachCountNum%1.0 == 0):
-#                             imageArrayTemp = imageArray.copy()
-#                             cv.rectangle(imageArrayTemp, (eachColCord,eachRowCord),(eachColCordEnd,eachRowCordEnd), (0, 0, 0), 2)
-#                             plt.clf()
-#                             plt.imshow(imageArrayTemp)
-                            imageArrayTemp = rescaledImage.copy()
-                            cv.rectangle(imageArrayTemp, (predictRun[1],predictRun[0]),(predictRun[1]+32,predictRun[0]+32), (0, 0, 0), 2)
-                            plt.clf()
-                            plt.imshow(imageArrayTemp)
-                            if(eachPredict > 0):
-                                # add text box... saying text
-                                plt.text(150, 150, 'TEXT',horizontalalignment='center', fontsize=30, weight = 'heavy', backgroundcolor='g', color='k' )
-                            else:
-                                # add text box... saying non text
-                                plt.text(150, 150, 'NON-TEXT',horizontalalignment='center', fontsize=30, weight = 'heavy', backgroundcolor='r', color='k' )
-                            plt.gca().xaxis.set_major_locator(plt.NullLocator())
-                            plt.gca().yaxis.set_major_locator(plt.NullLocator())
-                            plt.savefig('temp/img_'+ str(fileRun).zfill(4)+'.png')
-                            fileRun += 1
-                        eachCountNum +=1
-                        plt.clf()
-                    tempCopy = maxPredictImage.copy()
-                    tempCopy[tempCopy < 0 ] = 0
-                    plt.imshow(imageArray)
-                    plt.imshow(tempCopy, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-                    plt.show()
             # save the response
             maxPredictImage[maxPredictImage==-np.Inf] = minT
             np.save(predictFileName, maxPredictImage)
-            maxPredictImage[maxPredictImage < 0 ] = 0
-            plt.imshow(imageArray)
-            plt.imshow(maxPredictImage, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-            plt.show()
         end = time.time()
         print  'getFinalPrediction - Finished processing  - ', imgPath, ' seconds - ', end-start
         print '############################################################################################'
-        
-        
+       
 # final max prediction in one function
 def getFinalPredictionMSER(dictionary, patchSizeTraining, patchStepTraining, \
                                    patchSizeDictionary, patchStepDictionary, \
@@ -1174,8 +861,6 @@ def getFinalPredictionMSER(dictionary, patchSizeTraining, patchStepTraining, \
                 if((rescaledImage.shape[0] >= 32) and (rescaledImage.shape[1] >=32)):
                     if (patchStepTraining == (1,1)):
                         # feature convolution extraction
-                        # txtPredictions = coates.computeResponseImageConvolution(rescaledImage, dictionary, \
-                        #                patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
                         txtPredictions = computeResponseImageConvolutionBatch(rescaledImage, dictionary, \
                                         patchSizeTraining, patchSizeDictionary, zcaParams, svmWeights)
                         #print np.allclose(txtPredictions, txtPredictionsbatch)
@@ -1198,10 +883,6 @@ def getFinalPredictionMSER(dictionary, patchSizeTraining, patchStepTraining, \
             # save the response
             maxPredictImage[maxPredictImage==-np.Inf] = minT
             np.save(predictFileName, maxPredictImage)
-            maxPredictImage[maxPredictImage < 0] = 0
-            plt.imshow(imageArray)
-            plt.imshow(maxPredictImage, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-            plt.show()
         end = time.time()
         print  'getFinalPredictionMSER - Finished processing  - ', imgPath, ' seconds - ', end-start
         print '############################################################################################'

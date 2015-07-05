@@ -4,9 +4,8 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 from scipy.misc import imread
 from sklearn.cluster import k_means
-import matplotlib.cm as cm
 
-def detectMSERBboxes(imagePath, delta , minArea, maxArea, maxVariation, minDiversity, plotProgress = True):
+def detectMSERBboxes(imagePath, delta , minArea, maxArea, maxVariation, minDiversity):
     aspectRatioMin = 0.1
     aspectRatioMax = 2.5
     heightMin = 10
@@ -42,22 +41,9 @@ def detectMSERBboxes(imagePath, delta , minArea, maxArea, maxVariation, minDiver
     maxCluster = np.minimum(numMserRegions, minNumClusters)
     print 'Num of MSER regions in Image - ', fName, ' - ',len(bboxes)
     bboxArray = np.array(bboxes)
-#     for boxRun in xrange(numMserRegions):
-#         curBox = bboxArray[boxRun,:]
-#         leftTopCorner = (int(curBox[0]), int(curBox[1]))
-#         imageArray[leftTopCorner[1]:leftTopCorner[1]+curBox[3],leftTopCorner[0]:leftTopCorner[0]+curBox[2]] = 255
-#     plt.imshow(imageArray)
-#     plt.gca().xaxis.set_major_locator(plt.NullLocator())
-#     plt.gca().yaxis.set_major_locator(plt.NullLocator())
-#     plt.show()
-    if plotProgress:
-        plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        plt.imshow(imageOrg)
-        plt.show()
     # now cluster the data
     dataToCluster =  bboxArray[:,2:4]
-    selectScales = getCenteroidsByGapStats(dataToCluster, maxCluster, plotProgress)
+    selectScales = getCenteroidsByGapStats(dataToCluster, maxCluster)
     return(selectScales)
 
 def calculateWk(centroids, labels, dataToCluster):
@@ -69,21 +55,7 @@ def calculateWk(centroids, labels, dataToCluster):
         numPointsInCluster = clusterPoints.shape[0]
         wk = wk + (np.linalg.norm(clusterPoints-currentCenteroid)**2 / float(2*numPointsInCluster))
     return wk
-#     numOfClusters = np.max(labels) + 1
-#     wk = 0
-#     for clusterRun in xrange(numOfClusters):
-#         currentCenteroid = centroids[clusterRun,:]
-#         clusterPoints = dataToCluster[labels==clusterRun,:]
-#         numPointsInCluster = clusterPoints.shape[0]
-#         wk = wk + (np.linalg.norm(clusterPoints-currentCenteroid)**2 / float(2*numPointsInCluster))
-#     return wk
-def getCenteroidsByGapStats(dataToCluster, maxCluster, plotProgress):
-    # plot data
-    if plotProgress:
-        plt.scatter(dataToCluster[:,0],dataToCluster[:,1], s=100)
-        #plt.xlabel('Width of MSER Bounding box (pixels)')
-        #plt.ylabel('Height of MSER Bounding box (pixels)')
-        plt.show()
+def getCenteroidsByGapStats(dataToCluster, maxCluster):
     xminData = np.min(dataToCluster[:,0])
     xmaxData = np.max(dataToCluster[:,0])
     yminData = np.min(dataToCluster[:,1])
@@ -124,40 +96,11 @@ def getCenteroidsByGapStats(dataToCluster, maxCluster, plotProgress):
     for iRun in xrange(1, maxCluster-1):
         # gapofk-gapofk+1-sk
         finalMetric[0, iRun-1] = gap[0, iRun-1] - (gap[0, iRun] - skMetricSave[0, iRun])
-    
-    if plotProgress:
-        # 1
-        plt.plot(np.arange(1,maxCluster), sumSqMetricSave.T,marker='s',markersize=10)
-        #plt.xlabel('Number of clusters')
-        #plt.ylabel('Height of MSER Bounding box (pixels)')
-        plt.show()
-        # 2
-        plt.plot(np.arange(1,maxCluster), wksMetricSave.T,marker='o',markersize=10)
-        plt.plot(np.arange(1,maxCluster), wkbsMetricSave.T,marker='D',markersize=10)
-        #plt.xlabel('Number of clusters')
-        #plt.ylabel('Height of MSER Bounding box (pixels)')
-        plt.show()
-        # 3
-        plt.plot(np.arange(1,maxCluster), gap.T,marker='*',markersize=10)
-        plt.show()
-        # 4
-        plt.bar(np.arange(1,maxCluster), finalMetric.T)
-        #plt.xlabel('Number of clusters')
-        #plt.ylabel('Height of MSER Bounding box (pixels)')
-        plt.show()
-
     indeNonZero = np.where(finalMetric>0)[1]
     selectIndex = np.min(indeNonZero)
     # final clustering pics
     selectCenteroids =  np.array(centeroidSave[selectIndex])
     selectLabels = np.array(labelSave[selectIndex])
-    if plotProgress:
-        plt.scatter(dataToCluster[:,0],dataToCluster[:,1], c=selectLabels,s=100)
-        plt.scatter(selectCenteroids[:,0],selectCenteroids[:,1], s=200, \
-                    c= np.arange(selectIndex+1).astype(np.float32),marker='s')
-        #plt.xlabel('Width of MSER Bounding box (pixels)')
-        #plt.ylabel('Height of MSER Bounding box (pixels)')
-        plt.show()
     return selectCenteroids
 
 def detectActualScales(taggedRectangles, imagePath): 
@@ -190,12 +133,3 @@ def detectActualScales(taggedRectangles, imagePath):
             aspectRatio =  float(widthCharTag)/float(heightCharTag)
             bboxes.append([colCharTag, rowCharTag, widthCharTag, heightCharTag, aspectRatio])
     return bboxes
-
-def drawMSERProgression(imagePath,delta):
-    imageArray = cv.imread(imagePath, cv.CV_LOAD_IMAGE_GRAYSCALE)
-    for thresholdRun in np.arange(0,255,delta):
-        imagBin = imageArray < thresholdRun
-        plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        plt.imshow(imagBin, cmap = cm.get_cmap('Greys'))
-        plt.savefig('threshold_'+str(thresholdRun)+'.png')

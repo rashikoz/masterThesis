@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import os
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.io import loadmat
@@ -100,13 +100,6 @@ else:
                 gTruthArray = np.load(os.path.join(gTruthFolder, gTruthFilename))
                 maxPredict = np.load(os.path.join(maxPredictFolder, eachMaxPredictFile))
                 orgImageArray = imread(picFileFullpath)
-                showMaxPredict = maxPredict.copy()
-                showMaxPredict[showMaxPredict < 0] = 0
-                plt.imshow(orgImageArray)
-                plt.imshow(showMaxPredict, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-                plt.gca().xaxis.set_major_locator(plt.NullLocator())
-                plt.gca().yaxis.set_major_locator(plt.NullLocator())
-                plt.show()
                 gTruthFlat = gTruthArray.ravel()
                 predictFlat = maxPredict.ravel()
                 # increased value order

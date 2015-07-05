@@ -10,9 +10,7 @@ from subprocess import call
 import cPickle as pickle
 import vlfeat
 import mserHelper
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import cv2 as cv
+
 ###################################################################################################
 # necssary path variables
 tData_idfier = str(rusinol.cellSize[0]) + '_' + str(rusinol.cellSize[1])  
@@ -161,12 +159,6 @@ def parallelImageProcessing(patchSizeTraining, patchStepTraining, \
         print 'Data already present'  
         imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)
         maxPredictImage = np.load(predictFileName)            
-        maxPredictImage[maxPredictImage < 1.0] = 0
-        plt.imshow(imageArray)
-        plt.imshow(maxPredictImage, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-        plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
-        plt.show()
     else:
         # open the image and load the image as array
         imageArray = np.round(imread(imgPath, flatten=True)).astype(np.uint8)
@@ -198,7 +190,6 @@ def parallelImageProcessing(patchSizeTraining, patchStepTraining, \
                 print 'Computing the response for image ', fName, ' size ', rescaledImage.shape
             else:
                 curScale = scaleList[scaleRun]
-                #curScale = 0.5
                 print 'Computing the response for image ', fName, ' at scale ', curScale
                 # rescale the image based on ratio given
                 rescaledImage = imresize(imageArray, curScale, interp = 'bicubic')
@@ -226,12 +217,6 @@ def parallelImageProcessing(patchSizeTraining, patchStepTraining, \
                         predictPart = predict[:,0].reshape(numColumns,numRows).T
                         txtPredictions[rowImageRun:rowImageRun+numRows,\
                                         colImageRun:colImageRun+numColumns] = predictPart
-#                 tempCopy = txtPredictions.copy()
-#                 tempCopy[tempCopy < 0 ] = 0
-#                 plt.imshow(tempCopy, cmap = cm.get_cmap('Greys_r'))
-#                 plt.show()
-#                 eachCountNum = 0
-#                 fileRun = 0 
                 arrIndex = np.ndindex(txtPredictions.shape[0], txtPredictions.shape[1])
                 for predictRun in arrIndex:
                     eachPredict = txtPredictions[predictRun[0], predictRun[1]]
@@ -242,34 +227,9 @@ def parallelImageProcessing(patchSizeTraining, patchStepTraining, \
                     eachColCordEnd = eachColCord + np.floor(patchSizeTraining[1]/widthRatio)
                     predPart = maxPredictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd]
                     maxPredictImage[eachRowCord:eachRowCordEnd, eachColCord:eachColCordEnd] = np.maximum(predPart, eachPredict)
-                    # for video creation
-#                     if(eachCountNum%1.0 == 0):
-# #                             imageArrayTemp = imageArray.copy()
-# #                             cv.rectangle(imageArrayTemp, (eachColCord,eachRowCord),(eachColCordEnd,eachRowCordEnd), (0, 0, 0), 2)
-# #                             plt.clf()
-# #                             plt.imshow(imageArrayTemp)
-#                         imageArrayTemp = rescaledImage.copy()
-#                         cv.rectangle(imageArrayTemp, (predictRun[1],predictRun[0]),(predictRun[1]+32,predictRun[0]+32), (0, 0, 0), 2)
-#                         plt.clf()
-#                         plt.imshow(imageArrayTemp)
-#                         if(eachPredict > 0):
-#                             # add text box... saying text
-#                             plt.text(150, 150, 'TEXT',horizontalalignment='center', fontsize=30, weight = 'heavy', backgroundcolor='g', color='k' )
-#                         else:
-#                             # add text box... saying non text
-#                             plt.text(150, 150, 'NON-TEXT',horizontalalignment='center', fontsize=30, weight = 'heavy', backgroundcolor='r', color='k' )
-#                         plt.gca().xaxis.set_major_locator(plt.NullLocator())
-#                         plt.gca().yaxis.set_major_locator(plt.NullLocator())
-#                         plt.savefig('temp/img_'+ str(fileRun).zfill(4)+'.png')
-#                         fileRun += 1
-#                     eachCountNum +=1
         # save the response
         maxPredictImage[maxPredictImage==-np.Inf] = minT
         np.save(predictFileName, maxPredictImage)
-        maxPredictImage[maxPredictImage < 0 ] = 0
-        plt.imshow(imageArray)
-        plt.imshow(maxPredictImage, cmap = cm.get_cmap('Greys_r'), alpha = 0.8)
-        plt.show()
     end = time.time()
     print  'Finished processing  - ', imgPath, ' seconds - ', end-start
     
@@ -287,9 +247,6 @@ imagePathSaveList = os.path.join(rusinol.testPath, 'imgPathList.pkl')
 with open(imagePathSaveList, 'rb') as pklFile:
     imgPathList = pickle.load(pklFile)
     pklFile.close()
-imgPathList = imgPathList[:10]
-imgPathList[0] = os.path.join('/home','rthalapp','masterThesis','datasets','icdar','test','ryoungt_05.08.2002','PICT0015.JPG')
-#imgPathList[0] = os.path.join('/home','rthalapp','masterThesis','datasets','icdar','test','ryoungt_13.08.2002','dPICT0062.JPG')
 numOfImages = len(imgPathList)
 # parallel processing
 numCores = joblib.cpu_count()

@@ -32,9 +32,7 @@ testPklFilePath = os.path.join(coates.testPath, pklFileName)
 print 'Reading words pkl file from ', testPklFilePath
 print '############################################################################################'
 # store the results 
-saveIntermediateResults = False 
 scalesFromMSER = False
-
 # scales
 scaleList = [0.1, 0.2 , 0.3 ,0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.5]
 testPredictFolder = os.path.join(coates.resultPath, 'prediction')
@@ -44,36 +42,17 @@ with open(testPklFilePath, 'rb') as pklFile:
     imgPathList = pickle.load(pklFile)
 pklFile.close()
 
-imgPathList = imgPathList[:1]
-imgPathList[0] = os.path.join('/home','rthalapp','masterThesis','datasets','icdar','test','ryoungt_05.08.2002','aPICT0035.JPG')
-#imgPathList[0] = os.path.join('/home','rthalapp','masterThesis','datasets','icdar','test','ryoungt_13.08.2002','dPICT0020.JPG')
-#imgPathList[0] = os.path.join('/home','rthalapp','masterThesis','datasets','icdar','test','sml_01.08.2002','IMG_1200.JPG')
-
-if saveIntermediateResults == True:
-    coates.parallelImageProcessing(finalDict, coates.cellSize, coates.stepSize,  coates.subCellSize,\
-                        coates.subStepSize, trainingParamsList , scaleList, testPredictFolder,\
-                        pixelTextProbPredictorWeights, imgPathList)
-    # folder to store the max prediction values
-    print 'Generating final predictions'
-    maxPredictFolder = os.path.join(testPredictFolder, 'maxPredict')
-    gTruthFolder = os.path.join(coates.testPath, 'groundTruth')
-    if not os.path.exists(maxPredictFolder):
-        os.makedirs(maxPredictFolder)
-    # calculate max image
-    coates.findMaxImage(gTruthFolder,testPredictFolder, maxPredictFolder, scaleList, coates.stepSize, \
-                                    coates.cellSize, imgPathList)
+maxPredictFolder = os.path.join(testPredictFolder, 'maxPredict')
+if not os.path.exists(maxPredictFolder):
+    os.makedirs(maxPredictFolder)
+if(scalesFromMSER == True):
+    coates.getFinalPredictionMSER(finalDict, coates.cellSize, coates.stepSize,  coates.subCellSize,\
+                    coates.subStepSize, trainingParamsList , maxPredictFolder,\
+                    pixelTextProbPredictorWeights, imgPathList)
 else:
-    maxPredictFolder = os.path.join(testPredictFolder, 'maxPredict')
-    if not os.path.exists(maxPredictFolder):
-        os.makedirs(maxPredictFolder)
-    if(scalesFromMSER == True):
-        coates.getFinalPredictionMSER(finalDict, coates.cellSize, coates.stepSize,  coates.subCellSize,\
-                        coates.subStepSize, trainingParamsList , maxPredictFolder,\
-                        pixelTextProbPredictorWeights, imgPathList)
-    else:
-        coates.getFinalPrediction(finalDict, coates.cellSize, coates.stepSize,  coates.subCellSize,\
-                        coates.subStepSize, trainingParamsList , scaleList, maxPredictFolder,\
-                        pixelTextProbPredictorWeights, imgPathList)
+    coates.getFinalPrediction(finalDict, coates.cellSize, coates.stepSize,  coates.subCellSize,\
+                    coates.subStepSize, trainingParamsList , scaleList, maxPredictFolder,\
+                    pixelTextProbPredictorWeights, imgPathList)
 print '############################################################################################'
 # exit the script
 exit()
