@@ -1,4 +1,4 @@
-# courseRa
+# masterThesis
 Contains all my Master thesis related documents.
 Master Thesis - Bag of Features for Text Detection in Natural Scene Images.
 Folders:
