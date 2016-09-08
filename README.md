@@ -9,5 +9,5 @@ report - Final Master thesis report
 repository - Code repository (includes python and matlab code)
 The coding is mostly carried out in python using Scipy, Numpy, OpenCv and Vlfeat
 The code contains Spherical K-means implementation and also GAP statistic implementation.
-Spherical K-means is used to generate visual vocabulaory in Bag of Feeature paradigm. 
-GAP statistic is used to determine optimum number of clusters.
+Spherical K-means is used to generate visual vocabulaory in Bag of Feature paradigm. 
+GAP statistic is used to determine the optimum number of clusters.
